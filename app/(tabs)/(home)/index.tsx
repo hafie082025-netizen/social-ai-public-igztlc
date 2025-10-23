@@ -1,105 +1,163 @@
-import React from "react";
-import { Stack, Link } from "expo-router";
-import { FlatList, Pressable, StyleSheet, View, Text, Alert, Platform } from "react-native";
+import React, { useState } from "react";
+import { Stack, useRouter } from "expo-router";
+import {
+  ScrollView,
+  Pressable,
+  StyleSheet,
+  View,
+  Text,
+  TextInput,
+  ActivityIndicator,
+  Platform,
+} from "react-native";
 import { IconSymbol } from "@/components/IconSymbol";
-import { GlassView } from "expo-glass-effect";
 import { useTheme } from "@react-navigation/native";
-
-const ICON_COLOR = "#007AFF";
+import { colors } from "@/styles/commonStyles";
+import { useContentGenerator } from "@/hooks/useContentGenerator";
 
 export default function HomeScreen() {
   const theme = useTheme();
-  const modalDemos = [
-    {
-      title: "Standard Modal",
-      description: "Full screen modal presentation",
-      route: "/modal",
-      color: "#007AFF",
-    },
-    {
-      title: "Form Sheet",
-      description: "Bottom sheet with detents and grabber",
-      route: "/formsheet",
-      color: "#34C759",
-    },
-    {
-      title: "Transparent Modal",
-      description: "Overlay without obscuring background",
-      route: "/transparent-modal",
-      color: "#FF9500",
-    }
+  const router = useRouter();
+  const { generateContent: generateAIContent, loading } = useContentGenerator();
+  const [topic, setTopic] = useState("");
+  const [generatedContent, setGeneratedContent] = useState("");
+  const [selectedPlatform, setSelectedPlatform] = useState<"twitter" | "instagram" | "facebook">("twitter");
+
+  const platforms = [
+    { id: "twitter", name: "Twitter", icon: "paperplane.fill", color: "#1DA1F2" },
+    { id: "instagram", name: "Instagram", icon: "camera.fill", color: "#E4405F" },
+    { id: "facebook", name: "Facebook", icon: "person.2.fill", color: "#1877F2" },
   ];
 
-  const renderModalDemo = ({ item }: { item: (typeof modalDemos)[0] }) => (
-    <GlassView style={[
-      styles.demoCard,
-      Platform.OS !== 'ios' && { backgroundColor: theme.dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }
-    ]} glassEffectStyle="regular">
-      <View style={[styles.demoIcon, { backgroundColor: item.color }]}>
-        <IconSymbol name="square.grid.3x3" color="white" size={24} />
-      </View>
-      <View style={styles.demoContent}>
-        <Text style={[styles.demoTitle, { color: theme.colors.text }]}>{item.title}</Text>
-        <Text style={[styles.demoDescription, { color: theme.dark ? '#98989D' : '#666' }]}>{item.description}</Text>
-      </View>
-      <Link href={item.route as any} asChild>
-        <Pressable>
-          <GlassView style={[
-            styles.tryButton,
-            Platform.OS !== 'ios' && { backgroundColor: theme.dark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.08)' }
-          ]} glassEffectStyle="clear">
-            <Text style={[styles.tryButtonText, { color: theme.colors.primary }]}>Try It</Text>
-          </GlassView>
-        </Pressable>
-      </Link>
-    </GlassView>
-  );
+  const generateContent = async () => {
+    const content = await generateAIContent(topic, selectedPlatform);
+    if (content) {
+      setGeneratedContent(content);
+    }
+  };
 
   const renderHeaderRight = () => (
-    <Pressable
-      onPress={() => Alert.alert("Not Implemented", "This feature is not implemented yet")}
-      style={styles.headerButtonContainer}
-    >
-      <IconSymbol name="plus" color={theme.colors.primary} />
-    </Pressable>
-  );
-
-  const renderHeaderLeft = () => (
-    <Pressable
-      onPress={() => Alert.alert("Not Implemented", "This feature is not implemented yet")}
-      style={styles.headerButtonContainer}
-    >
-      <IconSymbol
-        name="gear"
-        color={theme.colors.primary}
-      />
+    <Pressable style={styles.headerButton}>
+      <IconSymbol name="plus" color={colors.primary} size={24} />
     </Pressable>
   );
 
   return (
     <>
-      {Platform.OS === 'ios' && (
+      {Platform.OS === "ios" && (
         <Stack.Screen
           options={{
-            title: "Building the app...",
+            title: "AI Content Generator",
             headerRight: renderHeaderRight,
-            headerLeft: renderHeaderLeft,
           }}
         />
       )}
-      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-        <FlatList
-          data={modalDemos}
-          renderItem={renderModalDemo}
-          keyExtractor={(item) => item.route}
-          contentContainerStyle={[
-            styles.listContainer,
-            Platform.OS !== 'ios' && styles.listContainerWithTabBar
-          ]}
-          contentInsetAdjustmentBehavior="automatic"
-          showsVerticalScrollIndicator={false}
-        />
-      </View>
+      <ScrollView
+        style={[styles.container, { backgroundColor: colors.background }]}
+        contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.header}>
+          <Text style={styles.title}>AI Content Generator</Text>
+          <Text style={styles.subtitle}>
+            Generate engaging social media content instantly
+          </Text>
+        </View>
+
+        {/* Platform Selection */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Select Platform</Text>
+          <View style={styles.platformGrid}>
+            {platforms.map((platform) => (
+              <Pressable
+                key={platform.id}
+                onPress={() => setSelectedPlatform(platform.id as any)}
+                style={[
+                  styles.platformButton,
+                  selectedPlatform === platform.id && styles.platformButtonActive,
+                ]}
+              >
+                <View
+                  style={[
+                    styles.platformIcon,
+                    { backgroundColor: platform.color },
+                  ]}
+                >
+                  <IconSymbol name={platform.icon} color="white" size={20} />
+                </View>
+                <Text
+                  style={[
+                    styles.platformName,
+                    selectedPlatform === platform.id && styles.platformNameActive,
+                  ]}
+                >
+                  {platform.name}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+
+        {/* Topic Input */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>What's your topic?</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter a topic or keyword..."
+            placeholderTextColor={colors.textSecondary}
+            value={topic}
+            onChangeText={setTopic}
+            multiline
+            maxLength={100}
+          />
+          <Text style={styles.charCount}>{topic.length}/100</Text>
+        </View>
+
+        {/* Generate Button */}
+        <Pressable
+          style={[styles.generateButton, loading && styles.generateButtonDisabled]}
+          onPress={generateContent}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="white" />
+          ) : (
+            <>
+              <IconSymbol name="sparkles" color="white" size={20} />
+              <Text style={styles.generateButtonText}>Generate Content</Text>
+            </>
+          )}
+        </Pressable>
+
+        {/* Generated Content */}
+        {generatedContent && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Generated Content</Text>
+            <View style={styles.contentCard}>
+              <Text style={styles.generatedText}>{generatedContent}</Text>
+              <View style={styles.contentActions}>
+                <Pressable style={styles.actionButton}>
+                  <IconSymbol name="doc.on.doc" color={colors.primary} size={18} />
+                  <Text style={styles.actionButtonText}>Copy</Text>
+                </Pressable>
+                <Pressable
+                  style={styles.actionButton}
+                  onPress={() => router.push("/(tabs)/scheduled")}
+                >
+                  <IconSymbol name="calendar" color={colors.primary} size={18} />
+                  <Text style={styles.actionButtonText}>Schedule</Text>
+                </Pressable>
+                <Pressable style={styles.actionButton}>
+                  <IconSymbol name="paperplane.fill" color={colors.primary} size={18} />
+                  <Text style={styles.actionButtonText}>Post Now</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        )}
+
+        <View style={styles.spacer} />
+      </ScrollView>
     </>
   );
 }
@@ -107,55 +165,146 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    // backgroundColor handled dynamically
+    backgroundColor: colors.background,
   },
-  listContainer: {
-    paddingVertical: 16,
+  contentContainer: {
+    paddingBottom: Platform.OS === "android" ? 120 : 40,
+  },
+  header: {
     paddingHorizontal: 16,
+    paddingTop: 20,
+    paddingBottom: 16,
   },
-  listContainerWithTabBar: {
-    paddingBottom: 100, // Extra padding for floating tab bar
+  title: {
+    fontSize: 28,
+    fontWeight: "800",
+    color: colors.text,
+    marginBottom: 8,
   },
-  demoCard: {
+  subtitle: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    lineHeight: 20,
+  },
+  section: {
+    paddingHorizontal: 16,
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: colors.text,
+    marginBottom: 12,
+  },
+  platformGrid: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  platformButton: {
+    flex: 1,
+    alignItems: "center",
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: colors.card,
+    borderWidth: 2,
+    borderColor: "#e0e0e0",
+  },
+  platformButtonActive: {
+    borderColor: colors.primary,
+    backgroundColor: "#f3e5f5",
+  },
+  platformIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  platformName: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: colors.textSecondary,
+  },
+  platformNameActive: {
+    color: colors.primary,
+  },
+  input: {
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 14,
+    color: colors.text,
+    minHeight: 80,
+    textAlignVertical: "top",
+  },
+  charCount: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginTop: 8,
+    textAlign: "right",
+  },
+  generateButton: {
+    marginHorizontal: 16,
+    backgroundColor: colors.primary,
+    borderRadius: 12,
+    paddingVertical: 14,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 8,
+    boxShadow: "0px 4px 12px rgba(98, 0, 238, 0.3)",
+    elevation: 4,
+  },
+  generateButtonDisabled: {
+    opacity: 0.7,
+  },
+  generateButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  contentCard: {
+    backgroundColor: colors.card,
     borderRadius: 12,
     padding: 16,
-    marginBottom: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
   },
-  demoIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
+  generatedText: {
+    fontSize: 14,
+    color: colors.text,
+    lineHeight: 22,
+    marginBottom: 16,
   },
-  demoContent: {
+  contentActions: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 8,
+  },
+  actionButton: {
     flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 10,
+    borderRadius: 8,
+    backgroundColor: "#f3e5f5",
+    gap: 6,
   },
-  demoTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 4,
-    // color handled dynamically
+  actionButtonText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: colors.primary,
   },
-  demoDescription: {
-    fontSize: 14,
-    lineHeight: 18,
-    // color handled dynamically
+  headerButton: {
+    padding: 8,
   },
-  headerButtonContainer: {
-    padding: 6,
-  },
-  tryButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 6,
-  },
-  tryButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    // color handled dynamically
+  spacer: {
+    height: 20,
   },
 });

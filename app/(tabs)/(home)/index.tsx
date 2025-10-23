@@ -9,6 +9,8 @@ import {
   TextInput,
   ActivityIndicator,
   Platform,
+  Alert,
+  Clipboard,
 } from "react-native";
 import { IconSymbol } from "@/components/IconSymbol";
 import { useTheme } from "@react-navigation/native";
@@ -18,7 +20,7 @@ import { useContentGenerator } from "@/hooks/useContentGenerator";
 export default function HomeScreen() {
   const theme = useTheme();
   const router = useRouter();
-  const { generateContent: generateAIContent, loading } = useContentGenerator();
+  const { generateContent: generateAIContent, loading, error } = useContentGenerator();
   const [topic, setTopic] = useState("");
   const [generatedContent, setGeneratedContent] = useState("");
   const [selectedPlatform, setSelectedPlatform] = useState<"twitter" | "instagram" | "facebook">("twitter");
@@ -30,10 +32,61 @@ export default function HomeScreen() {
   ];
 
   const generateContent = async () => {
+    if (!topic.trim()) {
+      Alert.alert("Empty Topic", "Please enter a topic to generate content");
+      return;
+    }
     const content = await generateAIContent(topic, selectedPlatform);
     if (content) {
       setGeneratedContent(content);
+      console.log("Content generated successfully for platform:", selectedPlatform);
+    } else {
+      Alert.alert("Generation Failed", "Could not generate content. Please try again.");
     }
+  };
+
+  const handleCopyContent = async () => {
+    try {
+      await Clipboard.setString(generatedContent);
+      Alert.alert("Copied!", "Content copied to clipboard");
+      console.log("Content copied to clipboard");
+    } catch (err) {
+      console.log("Copy error:", err);
+      Alert.alert("Copy Failed", "Could not copy content to clipboard");
+    }
+  };
+
+  const handleSchedulePost = () => {
+    if (!generatedContent) {
+      Alert.alert("No Content", "Please generate content first");
+      return;
+    }
+    router.push({
+      pathname: "/(tabs)/scheduled",
+      params: { 
+        content: generatedContent,
+        platform: selectedPlatform
+      }
+    });
+  };
+
+  const handlePostNow = () => {
+    Alert.alert(
+      "Post Now",
+      `Post to ${selectedPlatform}?`,
+      [
+        { text: "Cancel", onPress: () => console.log("Post cancelled"), style: "cancel" },
+        { 
+          text: "Post", 
+          onPress: () => {
+            Alert.alert("Success", "Post published successfully!");
+            setGeneratedContent("");
+            setTopic("");
+            console.log("Post published to:", selectedPlatform);
+          }
+        }
+      ]
+    );
   };
 
   const renderHeaderRight = () => (
@@ -113,11 +166,19 @@ export default function HomeScreen() {
           <Text style={styles.charCount}>{topic.length}/100</Text>
         </View>
 
+        {/* Error Display */}
+        {error && (
+          <View style={styles.errorContainer}>
+            <IconSymbol name="exclamationmark.circle" color="#FF6B6B" size={18} />
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        )}
+
         {/* Generate Button */}
         <Pressable
           style={[styles.generateButton, loading && styles.generateButtonDisabled]}
           onPress={generateContent}
-          disabled={loading}
+          disabled={loading || !topic.trim()}
         >
           {loading ? (
             <ActivityIndicator color="white" />
@@ -136,18 +197,18 @@ export default function HomeScreen() {
             <View style={styles.contentCard}>
               <Text style={styles.generatedText}>{generatedContent}</Text>
               <View style={styles.contentActions}>
-                <Pressable style={styles.actionButton}>
+                <Pressable style={styles.actionButton} onPress={handleCopyContent}>
                   <IconSymbol name="doc.on.doc" color={colors.primary} size={18} />
                   <Text style={styles.actionButtonText}>Copy</Text>
                 </Pressable>
                 <Pressable
                   style={styles.actionButton}
-                  onPress={() => router.push("/(tabs)/scheduled")}
+                  onPress={handleSchedulePost}
                 >
                   <IconSymbol name="calendar" color={colors.primary} size={18} />
                   <Text style={styles.actionButtonText}>Schedule</Text>
                 </Pressable>
-                <Pressable style={styles.actionButton}>
+                <Pressable style={styles.actionButton} onPress={handlePostNow}>
                   <IconSymbol name="paperplane.fill" color={colors.primary} size={18} />
                   <Text style={styles.actionButtonText}>Post Now</Text>
                 </Pressable>
@@ -248,6 +309,22 @@ const styles = StyleSheet.create({
     marginTop: 8,
     textAlign: "right",
   },
+  errorContainer: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFE5E5",
+    borderRadius: 8,
+    padding: 12,
+    gap: 8,
+  },
+  errorText: {
+    fontSize: 13,
+    color: "#FF6B6B",
+    fontWeight: "500",
+    flex: 1,
+  },
   generateButton: {
     marginHorizontal: 16,
     backgroundColor: colors.primary,
@@ -261,7 +338,7 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   generateButtonDisabled: {
-    opacity: 0.7,
+    opacity: 0.6,
   },
   generateButtonText: {
     color: "white",

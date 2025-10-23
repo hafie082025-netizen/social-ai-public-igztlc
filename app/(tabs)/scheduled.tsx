@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -8,21 +8,28 @@ import {
   Platform,
   Pressable,
   FlatList,
+  Alert,
+  Modal,
+  TextInput,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { IconSymbol } from "@/components/IconSymbol";
 import { colors } from "@/styles/commonStyles";
+import { useLocalSearchParams } from "expo-router";
 
 interface ScheduledPost {
   id: string;
   content: string;
-  platform: "twitter" | "instagram" | "facebook";
+  platform: "twitter" | "instagram" | "facebook" | "youtube";
   scheduledTime: string;
   status: "scheduled" | "posted" | "failed";
 }
 
 export default function ScheduledScreen() {
-  const [scheduledPosts] = useState<ScheduledPost[]>([
+  const params = useLocalSearchParams();
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [selectedTime, setSelectedTime] = useState("Today at 2:00 PM");
+  const [scheduledPosts, setScheduledPosts] = useState<ScheduledPost[]>([
     {
       id: "1",
       content: "🚀 Excited to announce our new AI-powered features! #Innovation",
@@ -55,16 +62,64 @@ export default function ScheduledScreen() {
     },
   ]);
 
+  // Handle incoming content from home screen
+  useEffect(() => {
+    if (params?.content && params?.platform) {
+      console.log("Received content to schedule:", params.content);
+      setShowScheduleModal(true);
+    }
+  }, [params]);
+
   const platformColors: Record<string, string> = {
     twitter: "#1DA1F2",
     instagram: "#E4405F",
     facebook: "#1877F2",
+    youtube: "#FF0000",
   };
 
   const platformIcons: Record<string, string> = {
     twitter: "paperplane.fill",
     instagram: "camera.fill",
     facebook: "person.2.fill",
+    youtube: "play.fill",
+  };
+
+  const handleSchedulePost = () => {
+    if (!params?.content) {
+      Alert.alert("Error", "No content to schedule");
+      return;
+    }
+
+    const newPost: ScheduledPost = {
+      id: Date.now().toString(),
+      content: params.content as string,
+      platform: (params.platform as any) || "twitter",
+      scheduledTime: selectedTime,
+      status: "scheduled",
+    };
+
+    setScheduledPosts([newPost, ...scheduledPosts]);
+    setShowScheduleModal(false);
+    Alert.alert("Success", "Post scheduled successfully!");
+    console.log("Post scheduled:", newPost);
+  };
+
+  const handleDeletePost = (postId: string) => {
+    Alert.alert(
+      "Delete Post",
+      "Are you sure you want to delete this post?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          onPress: () => {
+            setScheduledPosts(scheduledPosts.filter((p) => p.id !== postId));
+            console.log("Post deleted:", postId);
+          },
+          style: "destructive",
+        },
+      ]
+    );
   };
 
   const getStatusColor = (status: string) => {
@@ -140,7 +195,10 @@ export default function ScheduledScreen() {
               <IconSymbol name="pencil" color={colors.primary} size={16} />
               <Text style={styles.actionButtonText}>Edit</Text>
             </Pressable>
-            <Pressable style={styles.actionButton}>
+            <Pressable 
+              style={styles.actionButton}
+              onPress={() => handleDeletePost(item.id)}
+            >
               <IconSymbol name="trash" color="#FF6B6B" size={16} />
               <Text style={[styles.actionButtonText, { color: "#FF6B6B" }]}>
                 Delete
@@ -201,6 +259,52 @@ export default function ScheduledScreen() {
           showsVerticalScrollIndicator={false}
         />
       )}
+
+      {/* Schedule Modal */}
+      <Modal
+        visible={showScheduleModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowScheduleModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Schedule Post</Text>
+              <Pressable onPress={() => setShowScheduleModal(false)}>
+                <IconSymbol name="xmark" color={colors.text} size={24} />
+              </Pressable>
+            </View>
+
+            <ScrollView style={styles.modalBody}>
+              <Text style={styles.modalLabel}>Platform</Text>
+              <Text style={styles.modalValue}>
+                {params?.platform ? (params.platform as string).charAt(0).toUpperCase() + (params.platform as string).slice(1) : "Twitter"}
+              </Text>
+
+              <Text style={styles.modalLabel}>Content</Text>
+              <View style={styles.contentPreview}>
+                <Text style={styles.contentPreviewText}>{params?.content}</Text>
+              </View>
+
+              <Text style={styles.modalLabel}>Schedule Time</Text>
+              <TextInput
+                style={styles.timeInput}
+                value={selectedTime}
+                onChangeText={setSelectedTime}
+                placeholder="e.g., Today at 2:00 PM"
+              />
+
+              <Pressable
+                style={styles.scheduleButton}
+                onPress={handleSchedulePost}
+              >
+                <Text style={styles.scheduleButtonText}>Schedule Post</Text>
+              </Pressable>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -338,5 +442,85 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 14,
     fontWeight: "600",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "flex-end",
+  },
+  modalContent: {
+    backgroundColor: colors.background,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: "80%",
+    paddingTop: 16,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#e0e0e0",
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: colors.text,
+  },
+  modalBody: {
+    padding: 16,
+  },
+  modalLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: colors.text,
+    marginBottom: 8,
+    marginTop: 16,
+  },
+  modalValue: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    backgroundColor: colors.card,
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
+  },
+  contentPreview: {
+    backgroundColor: colors.card,
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
+    minHeight: 80,
+  },
+  contentPreviewText: {
+    fontSize: 13,
+    color: colors.text,
+    lineHeight: 20,
+  },
+  timeInput: {
+    backgroundColor: colors.card,
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
+    fontSize: 14,
+    color: colors.text,
+  },
+  scheduleButton: {
+    backgroundColor: colors.primary,
+    borderRadius: 8,
+    paddingVertical: 12,
+    alignItems: "center",
+    marginTop: 24,
+    marginBottom: 16,
+  },
+  scheduleButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "700",
   },
 });

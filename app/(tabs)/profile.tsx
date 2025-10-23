@@ -18,6 +18,14 @@ export default function ProfileScreen() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
 
+  // User information
+  const userInfo = {
+    name: "Bashir Ashir",
+    email: "ashirbashir2@gmail.com",
+    phone: "+256702945448",
+    youtubeHandle: "@bashirashir2",
+  };
+
   const connectedAccounts = [
     {
       id: "twitter",
@@ -25,6 +33,7 @@ export default function ProfileScreen() {
       icon: "paperplane.fill",
       color: "#1DA1F2",
       connected: true,
+      handle: "@bashirashir2",
     },
     {
       id: "instagram",
@@ -32,6 +41,7 @@ export default function ProfileScreen() {
       icon: "camera.fill",
       color: "#E4405F",
       connected: false,
+      handle: "Not connected",
     },
     {
       id: "facebook",
@@ -39,6 +49,15 @@ export default function ProfileScreen() {
       icon: "person.2.fill",
       color: "#1877F2",
       connected: true,
+      handle: "Bashir Ashir",
+    },
+    {
+      id: "youtube",
+      name: "YouTube",
+      icon: "play.fill",
+      color: "#FF0000",
+      connected: true,
+      handle: userInfo.youtubeHandle,
     },
   ];
 
@@ -51,7 +70,7 @@ export default function ProfileScreen() {
         <View>
           <Text style={styles.accountName}>{account.name}</Text>
           <Text style={styles.accountStatus}>
-            {account.connected ? "Connected" : "Not connected"}
+            {account.connected ? account.handle : "Not connected"}
           </Text>
         </View>
       </View>
@@ -91,8 +110,10 @@ export default function ProfileScreen() {
           <View style={styles.profileAvatar}>
             <IconSymbol name="person.fill" color="white" size={40} />
           </View>
-          <Text style={styles.profileName}>Social Media Manager</Text>
-          <Text style={styles.profileEmail}>Powered by AI</Text>
+          <Text style={styles.profileName}>{userInfo.name}</Text>
+          <Text style={styles.profileEmail}>{userInfo.email}</Text>
+          <Text style={styles.profilePhone}>{userInfo.phone}</Text>
+          <Text style={styles.profileSubtitle}>AI Social Media Manager</Text>
         </View>
 
         {/* Connected Accounts Section */}
@@ -218,8 +239,19 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   profileEmail: {
-    fontSize: 14,
+    fontSize: 13,
     color: colors.textSecondary,
+    marginBottom: 2,
+  },
+  profilePhone: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginBottom: 8,
+  },
+  profileSubtitle: {
+    fontSize: 12,
+    color: colors.primary,
+    fontWeight: "600",
   },
   section: {
     paddingHorizontal: 16,
